@@ -2,9 +2,7 @@ package com.github.libretube.ui.fragments
 
 import android.os.Bundle
 import android.util.Log
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
 import android.widget.Toast
 import androidx.core.view.isGone
@@ -40,20 +38,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class LibraryFragment : DynamicLayoutManagerFragment() {
+class LibraryFragment : DynamicLayoutManagerFragment(R.layout.fragment_library) {
     private var _binding: FragmentLibraryBinding? = null
     private val binding get() = _binding!!
 
     private val commonPlayerViewModel: CommonPlayerViewModel by activityViewModels()
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentLibraryBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+    private val playlistsAdapter = PlaylistsAdapter(PlaylistsHelper.getPrivatePlaylistType())
+    private val playlistBookmarkAdapter = PlaylistBookmarkAdapter()
 
     override fun setLayoutManagers(gridItems: Int) {
         _binding?.bookmarksRecView?.layoutManager = GridLayoutManager(context, gridItems.ceilHalf())
@@ -61,7 +53,20 @@ class LibraryFragment : DynamicLayoutManagerFragment() {
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        _binding = FragmentLibraryBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
+
+        binding.bookmarksRecView.adapter = playlistBookmarkAdapter
+        // listen for playlists to become deleted
+        playlistsAdapter.registerAdapterDataObserver(object :
+            RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                _binding?.nothingHere?.isVisible = playlistsAdapter.itemCount == 0
+                _binding?.sortTV?.isVisible = playlistsAdapter.itemCount > 0
+                super.onItemRangeRemoved(positionStart, itemCount)
+            }
+        })
+        binding.playlistRecView.adapter = playlistsAdapter
 
         // listen for the mini player state changing
         commonPlayerViewModel.isMiniPlayerVisible.observe(viewLifecycleOwner) {
@@ -147,7 +152,7 @@ class LibraryFragment : DynamicLayoutManagerFragment() {
 
             binding.bookmarksCV.isVisible = bookmarks.isNotEmpty()
             if (bookmarks.isNotEmpty()) {
-                binding.bookmarksRecView.adapter = PlaylistBookmarkAdapter(bookmarks)
+                playlistBookmarkAdapter.submitList(bookmarks)
             }
         }
     }
@@ -189,23 +194,8 @@ class LibraryFragment : DynamicLayoutManagerFragment() {
     private fun showPlaylists(playlists: List<Playlists>) {
         val binding = _binding ?: return
 
-        val playlistsAdapter = PlaylistsAdapter(
-            playlists.toMutableList(),
-            PlaylistsHelper.getPrivatePlaylistType()
-        )
-
-        // listen for playlists to become deleted
-        playlistsAdapter.registerAdapterDataObserver(object :
-            RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                _binding?.nothingHere?.isVisible = playlistsAdapter.itemCount == 0
-                _binding?.sortTV?.isVisible = playlistsAdapter.itemCount > 0
-                super.onItemRangeRemoved(positionStart, itemCount)
-            }
-        })
-
         binding.nothingHere.isGone = true
         binding.sortTV.isVisible = true
-        binding.playlistRecView.adapter = playlistsAdapter
+        playlistsAdapter.submitList(playlists)
     }
 }

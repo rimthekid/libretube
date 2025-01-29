@@ -3,9 +3,7 @@ package com.github.libretube.ui.fragments
 import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Parcelable
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.fragment.app.viewModels
@@ -27,7 +25,7 @@ import com.github.libretube.helpers.PreferenceHelper
 import com.github.libretube.ui.activities.MainActivity
 import com.github.libretube.ui.adapters.SearchResultsAdapter
 import com.github.libretube.ui.base.DynamicLayoutManagerFragment
-import com.github.libretube.ui.extensions.setOnBackPressed
+import com.github.libretube.ui.extensions.setupFragmentAnimation
 import com.github.libretube.ui.models.SearchResultViewModel
 import com.github.libretube.util.TextUtils.toTimeInSeconds
 import kotlinx.coroutines.Dispatchers
@@ -35,7 +33,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
-class SearchResultFragment : DynamicLayoutManagerFragment() {
+class SearchResultFragment : DynamicLayoutManagerFragment(R.layout.fragment_search_result) {
     private var _binding: FragmentSearchResultBinding? = null
     private val binding get() = _binding!!
     private val args by navArgs<SearchResultFragmentArgs>()
@@ -43,20 +41,12 @@ class SearchResultFragment : DynamicLayoutManagerFragment() {
 
     private var recyclerViewState: Parcelable? = null
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentSearchResultBinding.inflate(inflater)
-        return binding.root
-    }
-
     override fun setLayoutManagers(gridItems: Int) {
         _binding?.searchRecycler?.layoutManager = GridLayoutManager(context, gridItems.ceilHalf())
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        _binding = FragmentSearchResultBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
 
         // fixes a bug that the search query will stay the old one when searching for multiple
@@ -115,7 +105,7 @@ class SearchResultFragment : DynamicLayoutManagerFragment() {
             }
         }
 
-        setOnBackPressed {
+        setupFragmentAnimation(binding.root) {
             findNavController().popBackStack(R.id.searchFragment, true) ||
                     findNavController().popBackStack()
         }

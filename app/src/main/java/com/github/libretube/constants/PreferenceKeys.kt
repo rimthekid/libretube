@@ -90,6 +90,7 @@ object PreferenceKeys {
     const val SHOW_TIME_LEFT = "show_time_left"
     const val ALLOW_PLAYBACK_DURING_CALL = "playback_during_call"
     const val BEHAVIOR_WHEN_MINIMIZED = "behavior_when_minimized"
+    const val REPEAT_MODE = "repeat_mode"
 
     // SponsorBlock
     const val SB_USER_ID = "sb_user_id"
@@ -147,4 +148,5 @@ object PreferenceKeys {
     const val IMAGE_PROXY_URL = "image_proxy_url"
     const val SELECTED_CHANNEL_GROUP = "selected_channel_group"
     const val SELECTED_DOWNLOAD_SORT_TYPE = "selected_download_sort_type"
+    const val LAST_SHOWN_INFO_MESSAGE_VERSION_CODE = "last_shown_info_message_version"
 }

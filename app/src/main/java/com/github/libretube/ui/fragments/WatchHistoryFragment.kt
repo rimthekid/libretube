@@ -5,9 +5,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.Parcelable
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.core.os.postDelayed
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -41,7 +39,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import kotlin.math.ceil
 
-class WatchHistoryFragment : DynamicLayoutManagerFragment() {
+class WatchHistoryFragment : DynamicLayoutManagerFragment(R.layout.fragment_watch_history) {
     private var _binding: FragmentWatchHistoryBinding? = null
     private val binding get() = _binding!!
 
@@ -49,6 +47,8 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment() {
     private val commonPlayerViewModel: CommonPlayerViewModel by activityViewModels()
     private var isLoading = false
     private var recyclerViewState: Parcelable? = null
+
+    private val watchHistoryAdapter = WatchHistoryAdapter()
 
     private var selectedStatusFilter = PreferenceHelper.getInt(
         PreferenceKeys.SELECTED_HISTORY_STATUS_FILTER,
@@ -67,26 +67,43 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment() {
             field = value
         }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentWatchHistoryBinding.inflate(inflater, container, false)
-        return binding.root
-    }
-
     override fun setLayoutManagers(gridItems: Int) {
         _binding?.watchHistoryRecView?.layoutManager =
             GridLayoutManager(context, gridItems.ceilHalf())
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        _binding = FragmentWatchHistoryBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
 
         commonPlayerViewModel.isMiniPlayerVisible.observe(viewLifecycleOwner) {
             _binding?.watchHistoryRecView?.updatePadding(bottom = if (it) 64f.dpToPx() else 0)
         }
+
+        binding.watchHistoryRecView.setOnDismissListener { position ->
+            watchHistoryAdapter.removeFromWatchHistory(position)
+        }
+
+        // observe changes to indicate if the history is empty
+        watchHistoryAdapter.registerAdapterDataObserver(object :
+            RecyclerView.AdapterDataObserver() {
+            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
+                if (watchHistoryAdapter.itemCount == 0) {
+                    binding.historyContainer.isGone = true
+                    binding.historyEmpty.isVisible = true
+                }
+            }
+        })
+
+        binding.watchHistoryRecView.adapter = watchHistoryAdapter
+
+        // manually restore the recyclerview state due to https://github.com/material-components/material-components-android/issues/3473
+        binding.watchHistoryRecView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
+            override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
+                super.onScrollStateChanged(recyclerView, newState)
+                recyclerViewState = binding.watchHistoryRecView.layoutManager?.onSaveInstanceState()
+            }
+        })
 
         lifecycleScope.launch {
             val history = withContext(Dispatchers.IO) {
@@ -147,24 +164,14 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment() {
                 }.show(childFragmentManager)
             }
 
-            // manually restore the recyclerview state due to https://github.com/material-components/material-components-android/issues/3473
-            binding.watchHistoryRecView.addOnScrollListener(object : RecyclerView.OnScrollListener() {
-                override fun onScrollStateChanged(recyclerView: RecyclerView, newState: Int) {
-                    super.onScrollStateChanged(recyclerView, newState)
-                    recyclerViewState = binding.watchHistoryRecView.layoutManager?.onSaveInstanceState()
-                }
-            })
-
             showWatchHistory(history)
         }
     }
 
     private fun showWatchHistory(history: List<WatchHistoryItem>) {
         val watchHistory = history.filterByStatusAndWatchPosition()
-        val watchHistoryAdapter = WatchHistoryAdapter(watchHistory.toMutableList())
 
         binding.playAll.setOnClickListener {
-            PlayingQueue.resetToDefaults()
             PlayingQueue.add(
                 *watchHistory.reversed().map(WatchHistoryItem::toStreamItem).toTypedArray()
             )
@@ -174,25 +181,9 @@ class WatchHistoryFragment : DynamicLayoutManagerFragment() {
                 keepQueue = true
             )
         }
-
-        binding.watchHistoryRecView.adapter = watchHistoryAdapter
+        watchHistoryAdapter.submitList(history)
         binding.historyEmpty.isGone = true
         binding.historyContainer.isVisible = true
-
-        binding.watchHistoryRecView.setOnDismissListener { position ->
-            watchHistoryAdapter.removeFromWatchHistory(position)
-        }
-
-        // observe changes to indicate if the history is empty
-        watchHistoryAdapter.registerAdapterDataObserver(object :
-            RecyclerView.AdapterDataObserver() {
-            override fun onItemRangeRemoved(positionStart: Int, itemCount: Int) {
-                if (watchHistoryAdapter.itemCount == 0) {
-                    binding.historyContainer.isGone = true
-                    binding.historyEmpty.isVisible = true
-                }
-            }
-        })
 
         // add a listener for scroll end, delay needed to prevent loading new ones the first time
         handler.postDelayed(200) {

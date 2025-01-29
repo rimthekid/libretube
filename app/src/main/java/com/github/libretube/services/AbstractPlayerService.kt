@@ -5,6 +5,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
+import androidx.annotation.CallSuper
 import androidx.annotation.OptIn
 import androidx.core.app.ServiceCompat
 import androidx.core.os.bundleOf
@@ -51,7 +52,8 @@ abstract class AbstractPlayerService : MediaLibraryService(), MediaLibrarySessio
     lateinit var videoId: String
         private set
 
-    var isTransitioning = true
+    var isTransitioning = false
+        private set
 
     val handler = Handler(Looper.getMainLooper())
 
@@ -74,7 +76,7 @@ abstract class AbstractPlayerService : MediaLibraryService(), MediaLibrarySessio
 
         override fun onPlayerError(error: PlaybackException) {
             // show a toast on errors
-            toastFromMainThread(error.localizedMessage)
+            toastFromMainThread(error.localizedMessage.orEmpty())
         }
 
         override fun onEvents(player: Player, events: Player.Events) {
@@ -88,6 +90,14 @@ abstract class AbstractPlayerService : MediaLibraryService(), MediaLibrarySessio
                 )
             }
         }
+
+        override fun onPlaybackStateChanged(playbackState: Int) {
+            super.onPlaybackStateChanged(playbackState)
+
+            if (playbackState == Player.STATE_READY) {
+                isTransitioning = false
+            }
+        }
     }
 
     override fun onCustomCommand(
@@ -98,8 +108,6 @@ abstract class AbstractPlayerService : MediaLibraryService(), MediaLibrarySessio
     ): ListenableFuture<SessionResult> {
         when (customCommand.customAction) {
             START_SERVICE_ACTION -> {
-                PlayingQueue.resetToDefaults()
-
                 CoroutineScope(Dispatchers.IO).launch {
                     onServiceCreated(args)
                     notificationProvider?.intentActivity = getIntentActivity()
@@ -230,6 +238,9 @@ abstract class AbstractPlayerService : MediaLibraryService(), MediaLibrarySessio
     abstract val isOfflinePlayer: Boolean
     abstract val isAudioOnlyPlayer: Boolean
 
+    val watchPositionsEnabled get() =
+        (PlayerHelper.watchPositionsAudio && isAudioOnlyPlayer) || (PlayerHelper.watchPositionsVideo && !isAudioOnlyPlayer)
+
     override fun onGetSession(controllerInfo: MediaSession.ControllerInfo): MediaLibrarySession? =
         mediaLibrarySession
 
@@ -310,10 +321,13 @@ abstract class AbstractPlayerService : MediaLibraryService(), MediaLibrarySessio
      *
      * This function should base its actions on the videoId variable.
      */
-    abstract suspend fun startPlayback()
+    @CallSuper
+    open suspend fun startPlayback() {
+        isTransitioning = true
+    }
 
     private fun saveWatchPosition() {
-        if (isTransitioning || !PlayerHelper.watchPositionsVideo) return
+        if (isTransitioning || !watchPositionsEnabled || !::videoId.isInitialized) return
 
         exoPlayer?.let { PlayerHelper.saveWatchPosition(it, videoId) }
     }
@@ -358,8 +372,6 @@ abstract class AbstractPlayerService : MediaLibraryService(), MediaLibrarySessio
         // java.lang.SecurityException: Session rejected the connection request.
         // because there can't be two active playerControllers at the same time.
         handler.postDelayed(50) {
-            PlayingQueue.resetToDefaults()
-
             saveWatchPosition()
 
             notificationProvider = null

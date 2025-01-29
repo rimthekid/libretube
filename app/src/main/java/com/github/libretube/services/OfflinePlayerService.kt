@@ -7,6 +7,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
 import com.github.libretube.constants.IntentData
+import com.github.libretube.db.DatabaseHelper
 import com.github.libretube.db.DatabaseHolder.Database
 import com.github.libretube.db.obj.DownloadWithItems
 import com.github.libretube.db.obj.filterByTab
@@ -46,6 +47,15 @@ open class OfflinePlayerService : AbstractPlayerService() {
             if (playbackState == Player.STATE_ENDED && PlayerHelper.isAutoPlayEnabled()) {
                 playNextVideo(PlayingQueue.getNext() ?: return)
             }
+
+            if (playbackState == Player.STATE_READY) {
+                scope.launch(Dispatchers.IO) {
+                    val watchHistoryItem = downloadWithItems?.download?.toStreamItem()?.toWatchHistoryItem(videoId)
+                    if (watchHistoryItem != null) {
+                        DatabaseHelper.addToWatchHistory(watchHistoryItem)
+                    }
+                }
+            }
         }
     }
 
@@ -80,6 +90,8 @@ open class OfflinePlayerService : AbstractPlayerService() {
      * Attempt to start an audio player with the given download items
      */
     override suspend fun startPlayback() {
+        super.startPlayback()
+
         val downloadWithItems = withContext(Dispatchers.IO) {
             Database.downloadDao().findById(videoId)
         }!!
@@ -92,9 +104,13 @@ open class OfflinePlayerService : AbstractPlayerService() {
             exoPlayer?.playWhenReady = PlayerHelper.playAutomatically
             exoPlayer?.prepare()
 
-            if (PlayerHelper.watchPositionsAudio) {
-                PlayerHelper.getStoredWatchPosition(videoId, downloadWithItems.download.duration)?.let {
-                    exoPlayer?.seekTo(it)
+            if (watchPositionsEnabled) {
+                DatabaseHelper.getWatchPosition(videoId)?.let {
+                    if (!DatabaseHelper.isVideoWatched(
+                            it,
+                            downloadWithItems.download.duration
+                        )
+                    ) exoPlayer?.seekTo(it)
                 }
             }
         }

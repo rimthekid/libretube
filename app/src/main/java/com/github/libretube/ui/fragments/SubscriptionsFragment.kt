@@ -4,9 +4,7 @@ import android.annotation.SuppressLint
 import android.content.res.Configuration
 import android.os.Bundle
 import android.os.Parcelable
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.view.ViewGroup.MarginLayoutParams
 import androidx.core.os.bundleOf
 import androidx.core.view.children
@@ -50,7 +48,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class SubscriptionsFragment : DynamicLayoutManagerFragment() {
+class SubscriptionsFragment : DynamicLayoutManagerFragment(R.layout.fragment_subscriptions) {
     private var _binding: FragmentSubscriptionsBinding? = null
     private val binding get() = _binding!!
 
@@ -64,10 +62,9 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment() {
     private var isCurrentTabSubChannels = false
     private var isAppBarFullyExpanded = true
 
-    private var feedAdapter: VideosAdapter? = null
+    private var feedAdapter = VideosAdapter()
     private val sortedFeed: MutableList<StreamItem> = mutableListOf()
 
-    private var channelsAdapter: SubscriptionChannelAdapter? = null
     private var selectedSortOrder = PreferenceHelper.getInt(PreferenceKeys.FEED_SORT_ORDER, 0)
         set(value) {
             PreferenceHelper.putInt(PreferenceKeys.FEED_SORT_ORDER, value)
@@ -84,23 +81,39 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment() {
     private var subChannelsRecyclerViewState: Parcelable? = null
     private var subFeedRecyclerViewState: Parcelable? = null
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentSubscriptionsBinding.inflate(inflater, container, false)
-        return binding.root
-    }
+    private val legacySubscriptionsAdapter = LegacySubscriptionAdapter()
+    private val channelsAdapter = SubscriptionChannelAdapter()
 
     override fun setLayoutManagers(gridItems: Int) {
         _binding?.subFeed?.layoutManager = VideosAdapter.getLayout(requireContext(), gridItems)
     }
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        _binding = FragmentSubscriptionsBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
 
         setupSortAndFilter()
+
+        binding.subFeed.adapter = feedAdapter
+
+        val legacySubscriptions = PreferenceHelper.getBoolean(
+            PreferenceKeys.LEGACY_SUBSCRIPTIONS,
+            false
+        )
+
+        if (legacySubscriptions) {
+            binding.subChannels.layoutManager = GridLayoutManager(
+                context,
+                PreferenceHelper.getString(
+                    PreferenceKeys.LEGACY_SUBSCRIPTIONS_COLUMNS,
+                    "4"
+                ).toInt()
+            )
+            binding.subChannels.adapter = legacySubscriptionsAdapter
+        } else {
+            binding.subChannels.layoutManager = LinearLayoutManager(context)
+            binding.subChannels.adapter = channelsAdapter
+        }
 
         // Check if the AppBarLayout is fully expanded
         binding.subscriptionsAppBar.addOnOffsetChangedListener { _, verticalOffset ->
@@ -153,7 +166,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment() {
 
             if (viewModel.subscriptions.value != null && isCurrentTabSubChannels) {
                 binding.subRefresh.isRefreshing = true
-                channelsAdapter?.updateItems()
+                channelsAdapter.updateItems()
                 binding.subRefresh.isRefreshing = false
             }
         }
@@ -207,8 +220,6 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment() {
 
     private fun loadNextFeedItems() {
         val binding = _binding ?: return
-
-        val feedAdapter = feedAdapter ?: return
 
         val hasMore = sortedFeed.size > feedAdapter.itemCount
         if (viewModel.videoFeed.value != null && !isCurrentTabSubChannels && !binding.subRefresh.isRefreshing && hasMore) {
@@ -362,7 +373,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment() {
         // add an "all caught up item"
         if (selectedSortOrder == 0) {
             val lastCheckedFeedTime = PreferenceHelper.getLastCheckedFeedTime()
-            val caughtUpIndex = feed.indexOfFirst { it.uploaded / 1000 < lastCheckedFeedTime }
+            val caughtUpIndex = feed.indexOfFirst { it.uploaded <= lastCheckedFeedTime && !it.isUpcoming }
             if (caughtUpIndex > 0) {
                 sortedFeed.add(
                     caughtUpIndex,
@@ -377,14 +388,13 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment() {
         val notLoaded = viewModel.videoFeed.value.isNullOrEmpty()
         binding.subFeed.isGone = notLoaded
         binding.emptyFeed.isVisible = notLoaded
-
-        feedAdapter = VideosAdapter(mutableListOf())
         loadNextFeedItems()
 
-        binding.subFeed.adapter = feedAdapter
         binding.toggleSubs.text = getString(R.string.subscriptions)
 
-        PreferenceHelper.updateLastFeedWatchedTime()
+        feed.firstOrNull { !it.isUpcoming }?.uploaded?.let {
+            PreferenceHelper.setLastFeedWatchedTime(it)
+        };
     }
 
     @SuppressLint("SetTextI18n")
@@ -397,18 +407,9 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment() {
         )
 
         if (legacySubscriptions) {
-            binding.subChannels.layoutManager = GridLayoutManager(
-                context,
-                PreferenceHelper.getString(
-                    PreferenceKeys.LEGACY_SUBSCRIPTIONS_COLUMNS,
-                    "4"
-                ).toInt()
-            )
-            binding.subChannels.adapter = LegacySubscriptionAdapter(subscriptions)
+            legacySubscriptionsAdapter.submitList(subscriptions)
         } else {
-            binding.subChannels.layoutManager = LinearLayoutManager(context)
-            channelsAdapter = SubscriptionChannelAdapter(subscriptions.toMutableList())
-            binding.subChannels.adapter = channelsAdapter
+            channelsAdapter.submitList(subscriptions)
         }
 
         binding.subRefresh.isRefreshing = false
@@ -424,7 +425,7 @@ class SubscriptionsFragment : DynamicLayoutManagerFragment() {
     }
 
     fun removeItem(videoId: String) {
-        feedAdapter?.removeItemById(videoId)
+        feedAdapter.removeItemById(videoId)
         sortedFeed.removeAll { it.url?.toID() != videoId }
     }
 

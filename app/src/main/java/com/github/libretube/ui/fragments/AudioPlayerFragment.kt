@@ -7,13 +7,12 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.text.format.DateUtils
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import androidx.activity.BackEventCompat
 import androidx.activity.OnBackPressedCallback
 import androidx.constraintlayout.motion.widget.MotionLayout
 import androidx.constraintlayout.motion.widget.TransitionAdapter
+import androidx.core.math.MathUtils.clamp
 import androidx.core.os.bundleOf
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -65,7 +64,7 @@ import kotlinx.coroutines.launch
 import kotlin.math.abs
 
 @UnstableApi
-class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
+class AudioPlayerFragment : Fragment(R.layout.fragment_audio_player), AudioPlayerOptions {
     private var _binding: FragmentAudioPlayerBinding? = null
     val binding get() = _binding!!
 
@@ -109,17 +108,9 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
         }
     }
 
-    override fun onCreateView(
-        inflater: LayoutInflater,
-        container: ViewGroup?,
-        savedInstanceState: Bundle?
-    ): View {
-        _binding = FragmentAudioPlayerBinding.inflate(inflater)
-        return binding.root
-    }
-
     @SuppressLint("ClickableViewAccessibility")
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
+        _binding = FragmentAudioPlayerBinding.bind(view)
         super.onViewCreated(view, savedInstanceState)
 
         mainActivity?.getBottomNavColor()?.let { color ->
@@ -407,8 +398,9 @@ class AudioPlayerFragment : Fragment(), AudioPlayerOptions {
 
         // update the time bar current value and maximum value
         binding.timeBar.valueTo = (duration / 1000).toFloat()
-        binding.timeBar.value = minOf(
+        binding.timeBar.value = clamp(
             currentPosition / 1000,
+            binding.timeBar.valueFrom,
             binding.timeBar.valueTo
         )
 

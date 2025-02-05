@@ -368,18 +368,6 @@
     <string name="playing_next">Следующее воспроизведение за %1$s</string>
     <string name="stats_for_nerds">Статистика</string>
     <string name="video_id">Идентификатор видео</string>
-    <plurals name="months_ago">
-        <item quantity="one">%d месяц назад</item>
-        <item quantity="few">%d месяца назад</item>
-        <item quantity="many">%d месяцев назад</item>
-        <item quantity="other">%d месяцев назад</item>
-    </plurals>
-    <plurals name="years_ago">
-        <item quantity="one">%d год назад</item>
-        <item quantity="few">%d года назад</item>
-        <item quantity="many">%d лет назад</item>
-        <item quantity="other">%d лет назад</item>
-    </plurals>
     <string name="lbry_hls">LBRY HLS</string>
     <string name="lbry_hls_summary">Использовать LBRY HLS для трансляций, если доступно</string>
     <string name="uploaderAndVideoCount">%1$s • %2$d видео</string>
@@ -563,4 +551,8 @@
     <string name="crashlog">Журнал вылета</string>
     <string name="import_format_list_of_urls">Список ссылок или идентификаторов видео</string>
     <string name="export_playlist">Экспорт списка воспроизведения</string>
+    <string name="never_show_again">Никогда больше не показывайте это</string>
+    <string name="local_feed_extraction">Локальное извлечение корма</string>
+    <string name="local_feed_extraction_summary">Непосредственно получайте поток с YouTube. Это может быть значительно медленнее.</string>
+    <string name="update_information">Обновленная информация</string>
 </resources>

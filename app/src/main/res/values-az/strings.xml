@@ -368,14 +368,6 @@
     <string name="video_id">Video ID</string>
     <string name="autoplay_countdown">Avtomatik oynat geri sayım</string>
     <string name="autoplay_countdown_summary">Növbəti video avtomatik oynadılmazdan əvvəl 5 saniyəlik geri sayım göstər</string>
-    <plurals name="months_ago">
-        <item quantity="one">%d ay əvvəl</item>
-        <item quantity="other">%d ay əvvəl</item>
-    </plurals>
-    <plurals name="years_ago">
-        <item quantity="one">%d il əvvəl</item>
-        <item quantity="other">%d il əvvəl</item>
-    </plurals>
     <string name="lbry_hls">LBRY HLS</string>
     <string name="lbry_hls_summary">Mövcuddursa, yayımlama üçün LBRY HLS istifadə et</string>
     <string name="subscriberAndVideoCounts">%1$s abunəçi • %2$d video</string>
@@ -561,4 +553,5 @@
     <string name="local_feed_extraction">Yerli axın alınması</string>
     <string name="update_information">Yenilənmə Məlumatı</string>
     <string name="never_show_again">Bunu təkrar göstərmə</string>
+    <string name="show_upcoming_videos">Premerya videoları göstər</string>
 </resources>

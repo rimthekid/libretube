@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.content.res.Configuration
 import android.graphics.Color
-import android.os.Build
 import android.text.Spanned
 import android.view.Window
 import androidx.annotation.ColorInt
@@ -35,12 +34,7 @@ object ThemeHelper {
      * Set the background color of the status bar
      */
     private fun setStatusBarColor(context: Context, window: Window) {
-        window.statusBarColor =
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M && !isDarkMode(context)) {
-                getThemeColor(context, com.google.android.material.R.attr.colorOnBackground)
-            } else {
-                getThemeColor(context, android.R.attr.colorBackground)
-            }
+        window.statusBarColor = getThemeColor(context, android.R.attr.colorBackground)
         WindowCompat.getInsetsController(window, window.decorView)
             .isAppearanceLightStatusBars = !isDarkMode(context)
     }
@@ -54,11 +48,7 @@ object ThemeHelper {
         @ColorInt bottomNavColor: Int?
     ) {
         window.navigationBarColor =
-            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M && !isDarkMode(context)) {
-                getThemeColor(context, com.google.android.material.R.attr.colorOnBackground)
-            } else {
-                bottomNavColor ?: getThemeColor(context, android.R.attr.colorBackground)
-            }
+            bottomNavColor ?: getThemeColor(context, android.R.attr.colorBackground)
     }
 
     /**
@@ -138,7 +128,7 @@ object ThemeHelper {
     fun changeIcon(context: Context, newLogoActivityAlias: String) {
         // Disable Old Icon(s)
         for (appIcon in IconsSheetAdapter.availableIcons) {
-            val activityClass = "com.github.libretube." + appIcon.activityAlias
+            val activityClass = context.packageName + "." + appIcon.activityAlias
 
             // remove old icons
             context.packageManager.setComponentEnabledSetting(
@@ -149,7 +139,7 @@ object ThemeHelper {
         }
 
         // set the class name for the activity alias
-        val newLogoActivityClass = "com.github.libretube.$newLogoActivityAlias"
+        val newLogoActivityClass = context.packageName + "." + newLogoActivityAlias
         // Enable New Icon
         context.packageManager.setComponentEnabledSetting(
             ComponentName(context.packageName, newLogoActivityClass),

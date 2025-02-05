@@ -1,4 +1,4 @@
-package com.github.libretube.api
+package com.github.libretube.api.local
 
 import com.grack.nanojson.JsonObject
 import com.grack.nanojson.JsonParser

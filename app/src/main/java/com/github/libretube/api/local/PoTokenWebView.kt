@@ -1,4 +1,4 @@
-package com.github.libretube.api
+package com.github.libretube.api.local
 
 import android.content.Context
 import android.os.Build
@@ -9,6 +9,8 @@ import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import androidx.annotation.MainThread
 import com.github.libretube.BuildConfig
+import com.github.libretube.api.RetrofitInstance
+import com.github.libretube.api.USER_AGENT
 import kotlinx.coroutines.*
 import java.time.Instant
 import kotlin.coroutines.Continuation

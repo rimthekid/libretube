@@ -132,7 +132,6 @@ dependencies {
 
     /* NewPipe Extractor */
     implementation(libs.newpipeextractor)
-    implementation(libs.nanojson)
 
 
     /* Coil */
